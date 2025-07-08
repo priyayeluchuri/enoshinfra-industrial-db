@@ -1,0 +1,10 @@
+SELECT
+    COUNT(DISTINCT allottee_phone) AS unique_phone_count
+FROM kiadb_property_owners
+WHERE phone_valid = TRUE;
+
+
+-- Drop ai_agent_data first due to foreign key
+DROP TABLE IF EXISTS ai_agent_data;
+-- Drop kiadb_property_owners
+DROP TABLE IF EXISTS kiadb_property_owners;

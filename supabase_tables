@@ -1,0 +1,48 @@
+-- Drop ai_agent_data first due to foreign key
+DROP TABLE IF EXISTS ai_agent_data;
+-- Drop kiadb_property_owners
+DROP TABLE IF EXISTS kiadb_property_owners;
+
+-- Create table for validated KIADB property data
+CREATE TABLE kiadb_property_owners (
+    id SERIAL PRIMARY KEY,
+    plotcode VARCHAR(50) UNIQUE NOT NULL,
+    district_name TEXT[] DEFAULT '{}',
+    industrial_area TEXT[] DEFAULT '{}',
+    plot_number VARCHAR(50),
+    area_acres FLOAT,
+    allottee_name VARCHAR(200),
+    allottee_phone VARCHAR(15),
+    allottee_email VARCHAR(100),
+    address TEXT,
+    nature_of_industry VARCHAR(300), -- Increased to 300
+    ulpin VARCHAR(50),
+    plot_status VARCHAR(50),
+    phone_valid BOOLEAN DEFAULT FALSE,
+    email_valid BOOLEAN DEFAULT FALSE
+);
+
+-- Create indexes for faster querying
+CREATE INDEX idx_kiadb_property_owners_plotcode ON kiadb_property_owners (plotcode);
+CREATE INDEX idx_kiadb_property_owners_phone_valid ON kiadb_property_owners (phone_valid);
+CREATE INDEX idx_kiadb_property_owners_district_name ON kiadb_property_owners USING GIN (district_name);
+CREATE INDEX idx_kiadb_property_owners_industrial_area ON kiadb_property_owners USING GIN (industrial_area);
+
+-- Create table for AI agent call outcomes
+CREATE TABLE ai_agent_data (
+    id SERIAL PRIMARY KEY,
+    plotcode VARCHAR(50) UNIQUE NOT NULL,
+    tenant_interest VARCHAR(10),
+    power_availability TEXT,
+    water_availability TEXT,
+    industrial_zone VARCHAR(50),
+    price_per_sqft FLOAT,
+    whatsapp_number VARCHAR(15),
+    current_tenants TEXT,
+    lease_duration VARCHAR(50),
+    last_contacted TIMESTAMP,
+    FOREIGN KEY (plotcode) REFERENCES kiadb_property_owners (plotcode)
+);
+
+-- Create index for AI agent queries
+CREATE INDEX idx_ai_agent_data_plotcode ON ai_agent_data (plotcode);

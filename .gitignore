@@ -1,0 +1,7 @@
+old/
+kiadb_data/
+*.log
+.env.local
+retell/
+coordinates/
+*.old

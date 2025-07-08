@@ -1,0 +1,3 @@
+get_coordinates get the map coords for given district in kiadb
+get_blrindus_data gets all the plot details for coords obtained above
+update_supabase will add all valid entries from data obtained above into db
