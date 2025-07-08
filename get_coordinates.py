@@ -17,7 +17,8 @@ if not os.path.exists(output_dir):
 
 # Districts to process
 #districts = ["Bengaluru Urban", "Bengaluru Rural"]
-districts = [ "Ramanagara", "Kolar" ]
+#districts = [ "Ramanagara", "Kolar" ]
+districts = [ "Mandya" ]
 # API endpoints
 url_areas = "http://kiadb.karnataka.gov.in/kiadbgisportal/sulb.asmx/GetIndustrialAreaDetailsbyDistrict"
 url_coords_template = "https://kgis.ksrsac.in/kgismaps2/rest/services/KIADB/KIADB/MapServer/2/query?f=json&where=industryname%20%3D%27{}%27&returnGeometry=true&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=102100"

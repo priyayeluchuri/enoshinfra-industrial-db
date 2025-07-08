@@ -2,8 +2,14 @@ import pandas as pd
 import re
 import os
 import logging
+import argparse
 from supabase import create_client, Client
 from dotenv import load_dotenv
+
+# Set up argument parser
+parser = argparse.ArgumentParser(description="Process KIADB CSV files and update Supabase database")
+parser.add_argument("--update", action="store_true", help="Process only new CSV files (without corresponding updated_ files) and update tables instead of clearing")
+args = parser.parse_args()
 
 # Set up logging
 logging.basicConfig(
@@ -49,7 +55,16 @@ def truncate_nature_of_industry(industry):
 
 # Directory containing CSVs
 csv_dir = "kiadb_data"
-csv_files = [f for f in os.listdir(csv_dir) if f.endswith(".csv") and f != "summary.csv" and not f.startswith("updated_")]
+# Get all CSV files excluding summary.csv and updated_ files
+all_csv_files = [f for f in os.listdir(csv_dir) if f.endswith(".csv") and f != "summary.csv" and not f.startswith("updated_")]
+
+# Filter files based on --update flag
+if args.update:
+    csv_files = [f for f in all_csv_files if not os.path.exists(os.path.join(csv_dir, f"updated_{f}"))]
+    print(f"Processing new files only: {csv_files}")
+else:
+    csv_files = all_csv_files
+    print(f"Processing all files: {csv_files}")
 
 # Dictionary to store merged data by Plotcode
 plot_data = {}
@@ -129,24 +144,26 @@ for csv_file in csv_files:
         print(f"Error processing {csv_file}. Check processing_errors.log for details. Continuing with next file.")
         continue
 
-# Clear existing Supabase tables
-try:
-    supabase.table("ai_agent_data").delete().neq("id", 0).execute()
-    supabase.table("kiadb_property_owners").delete().neq("id", 0).execute()
-except Exception as e:
-    logging.error(f"Error truncating Supabase tables: {e}")
-    print(f"Error truncating Supabase tables. Check processing_errors.log for details.")
-    exit(1)
+# Clear Supabase tables only if --update is not used
+if not args.update:
+    try:
+        supabase.table("ai_agent_data").delete().neq("id", 0).execute()
+        supabase.table("kiadb_property_owners").delete().neq("id", 0).execute()
+        print("Cleared Supabase tables")
+    except Exception as e:
+        logging.error(f"Error truncating Supabase tables: {e}")
+        print(f"Error truncating Supabase tables. Check processing_errors.log for details.")
+        exit(1)
 
-# Populate Supabase tables
+# Populate or update Supabase tables
 for plotcode, data in plot_data.items():
     # Convert sets to lists for PostgreSQL arrays
     data["district_name"] = list(data["district_name"])
     data["industrial_area"] = list(data["industrial_area"])
 
-    # Insert into kiadb_property_owners
+    # Upsert into kiadb_property_owners
     try:
-        supabase.table("kiadb_property_owners").insert({
+        supabase.table("kiadb_property_owners").upsert({
             "plotcode": plotcode,
             "district_name": data["district_name"],
             "industrial_area": data["industrial_area"],
@@ -161,12 +178,14 @@ for plotcode, data in plot_data.items():
             "plot_status": data["plot_status"],
             "phone_valid": data["phone_valid"],
             "email_valid": data["email_valid"]
-        }).execute()
+        }, on_conflict="plotcode").execute()
 
-        # Initialize ai_agent_data
-        supabase.table("ai_agent_data").insert({
-            "plotcode": plotcode
-        }).execute()
+        # Check if plotcode exists in ai_agent_data
+        existing = supabase.table("ai_agent_data").select("plotcode").eq("plotcode", plotcode).execute()
+        if not existing.data:  # Insert only if plotcode doesn't exist
+            supabase.table("ai_agent_data").insert({
+                "plotcode": plotcode
+            }).execute()
 
     except Exception as e:
         logging.error(f"Error processing plotcode {plotcode}: {e}")
